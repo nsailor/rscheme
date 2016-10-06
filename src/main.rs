@@ -2,6 +2,7 @@
 use std::fs::File;
 use std::io::prelude::*;
 mod parser;
+mod list;
 
 fn main() {
     let mut source_file = File::open("test-code.scm").unwrap();
