@@ -1,18 +1,19 @@
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub enum PrimitiveToken {
     LeftParen,
     RightParen,
-    Word { text: String },
-    StringLiteral { text: String },
-    NumericLiteral { value: f64 }
+    Word(String),
+    StringLiteral(String),
+    NumericLiteral(f64)
 }
 
 fn split_word(accum: &mut String, tokens: &mut Vec<PrimitiveToken>) {
     if !accum.is_empty() {
         match accum.to_string().parse::<f64>() {
-            Ok(v) => tokens.push(PrimitiveToken::NumericLiteral { value: v } ),
-            Err(_) => tokens.push(PrimitiveToken::Word { text: accum.to_string() } )
+            Ok(v) => tokens.push(PrimitiveToken::NumericLiteral(v)),
+            Err(_) => tokens.push(PrimitiveToken::Word(accum.to_string()))
         };
         *accum = String::new();
     }
@@ -32,7 +33,7 @@ pub fn parse_primitives(code: &mut String) -> Vec<PrimitiveToken> {
         } else if in_string {
             if c == '\"' {
                 in_string = false;
-                tokens.push(PrimitiveToken::StringLiteral { text: word_accumulator });
+                tokens.push(PrimitiveToken::StringLiteral(word_accumulator));
                 word_accumulator = String::new();
             } else {
                 word_accumulator.push(c);
