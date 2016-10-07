@@ -4,15 +4,16 @@ use std::vec::*;
 
 #[derive(Debug)]
 pub enum ListNode {
-    Node(Vec<Box<ListNode>>),
+    Node(Vec<ListNode>),
     Identifier(String),
     StringLiteral(String),
-    NumericLiteral(f64)
+    NumericLiteral(f64),
+    BooleanLiteral(bool)
 }
 
 impl ListNode {
     pub fn from_primitive_tokens(mut it:&mut IntoIter<PrimitiveToken>) -> ListNode {
-        let mut children:Vec<Box<ListNode>> = Vec::new();
+        let mut children:Vec<ListNode> = Vec::new();
         loop {
             let mut token_option = it.next();
             if token_option.is_none() {
@@ -20,13 +21,19 @@ impl ListNode {
             }
             let token = token_option.take().unwrap();
             match token {
-                PrimitiveToken::Word(s) => children.push(Box::new(ListNode::Identifier(s))),
+                PrimitiveToken::Word(s) => {
+                    match s.as_str() {
+                        "#t" => children.push(ListNode::BooleanLiteral(true)),
+                        "#f" => children.push(ListNode::BooleanLiteral(false)),
+                        _ => children.push(ListNode::Identifier(s))
+                    }
+                },
                 PrimitiveToken::StringLiteral(s) =>
-                    children.push(Box::new(ListNode::StringLiteral(s))),
+                    children.push(ListNode::StringLiteral(s)),
                 PrimitiveToken::NumericLiteral(v) =>
-                    children.push(Box::new(ListNode::NumericLiteral(v))),
+                    children.push(ListNode::NumericLiteral(v)),
                 PrimitiveToken::LeftParen => {
-                    children.push(Box::new(ListNode::from_primitive_tokens(&mut it)));
+                    children.push(ListNode::from_primitive_tokens(&mut it));
                 },
                 PrimitiveToken::RightParen => {
                     break

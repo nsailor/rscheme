@@ -19,7 +19,7 @@ fn split_word(accum: &mut String, tokens: &mut Vec<PrimitiveToken>) {
     }
 }
 
-pub fn parse_primitives(code: &mut String) -> Vec<PrimitiveToken> {
+pub fn parse_primitives(code: &String) -> Vec<PrimitiveToken> {
     let mut tokens:Vec<PrimitiveToken> = Vec::new();
     // Parser state machine
     let mut word_accumulator: String = String::new();
