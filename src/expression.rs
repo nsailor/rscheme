@@ -2,6 +2,7 @@
 use list::*;
 use std::fmt;
 use std::fmt::Formatter;
+use std::cmp::Ordering;
 
 #[derive(Debug,Clone)]
 pub enum LValue {
@@ -30,6 +31,9 @@ pub enum Procedure {
     Difference,
     Product,
     Division,
+    Equal,
+    Less,
+    Greater,
 }
 
 impl fmt::Display for Procedure {
@@ -42,6 +46,9 @@ impl fmt::Display for Procedure {
             Procedure::Difference => write!(f, "#procedure:-"),
             Procedure::Product => write!(f, "#procedure:*"),
             Procedure::Division => write!(f, "#procedure:/"),
+            Procedure::Equal => write!(f, "#procedure:="),
+            Procedure::Less => write!(f, "#procedure:<"),
+            Procedure::Greater => write!(f, "#procedure:>"),
         }
     }
 }
@@ -59,6 +66,49 @@ impl fmt::Display for LResult {
             LResult::Value(ref v) => write!(f, "{}", v),
             LResult::Procedure(ref p) => write!(f, "{}", p),
             LResult::Undefined => write!(f, "#undefined"),
+        }
+    }
+}
+
+impl LResult {
+    pub fn compare(&self, v: &LResult) -> Result<Ordering, String> {
+        let lhs: LValue;
+        let rhs: LValue;
+        match *self {
+            LResult::Value(ref lv) => lhs = lv.clone(),
+            _ => return Err("Can't compare procedures or undefined results.".to_string()),
+        }
+        match *v {
+            LResult::Value(ref lv) => rhs = lv.clone(),
+            _ => return Err("Can't compare procedures or undefined results.".to_string()),
+        }
+        match lhs {
+            LValue::StringValue(ref s1) => {
+                match rhs {
+                    LValue::StringValue(ref s2) => Ok(s1.cmp(s2)),
+                    _ => Err("Expected string expression as the second argument.".to_string()),
+                }
+            }
+            LValue::BooleanValue(b1) => {
+                match rhs {
+                    LValue::BooleanValue(b2) => Ok(b1.cmp(&b2)),
+                    _ => Err("Expected boolean expression as the second argument.".to_string()),
+                }
+            }
+            LValue::NumericalValue(x1) => {
+                match rhs {
+                    LValue::NumericalValue(x2) => {
+                        Ok(if x1 > x2 {
+                            Ordering::Greater
+                        } else if x1 == x2 {
+                            Ordering::Equal
+                        } else {
+                            Ordering::Less
+                        })
+                    }
+                    _ => Err("Expected numerical expression as the second argument.".to_string()),
+                }
+            }
         }
     }
 }

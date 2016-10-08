@@ -2,6 +2,7 @@
 use std::collections::HashMap;
 use list::ListNode;
 use expression::*;
+use std::cmp::Ordering;
 
 pub struct Program {
     stack: Vec<HashMap<String, LResult>>,
@@ -19,6 +20,9 @@ impl Program {
         basic_map.insert("-".to_string(), LResult::Procedure(Procedure::Difference));
         basic_map.insert("*".to_string(), LResult::Procedure(Procedure::Product));
         basic_map.insert("/".to_string(), LResult::Procedure(Procedure::Division));
+        basic_map.insert("=".to_string(), LResult::Procedure(Procedure::Equal));
+        basic_map.insert("<".to_string(), LResult::Procedure(Procedure::Less));
+        basic_map.insert(">".to_string(), LResult::Procedure(Procedure::Greater));
         self.stack.push(basic_map);
         match *root {
             ListNode::Node(ref v) => {
@@ -116,6 +120,48 @@ impl Program {
                     ratio = 1.0 / ratio;
                 }
                 Ok(LResult::Value(LValue::NumericalValue(ratio)))
+            }
+            Procedure::Equal => {
+                if args.len() != 2 {
+                    return Err("Equality test needs two arguments.".to_string());
+                }
+                match args[0].compare(&args[1]) {
+                    Ok(ord) => {
+                        match ord {
+                            Ordering::Equal => Ok(LResult::Value(LValue::BooleanValue(true))),
+                            _ => Ok(LResult::Value(LValue::BooleanValue(false))),
+                        }
+                    }
+                    Err(s) => Err(s),
+                }
+            }
+            Procedure::Less => {
+                if args.len() != 2 {
+                    return Err("Comparison test needs two arguments.".to_string());
+                }
+                match args[0].compare(&args[1]) {
+                    Ok(ord) => {
+                        match ord {
+                            Ordering::Less => Ok(LResult::Value(LValue::BooleanValue(true))),
+                            _ => Ok(LResult::Value(LValue::BooleanValue(false))),
+                        }
+                    }
+                    Err(s) => Err(s),
+                }
+            }
+            Procedure::Greater => {
+                if args.len() != 2 {
+                    return Err("Comparison test needs two arguments.".to_string());
+                }
+                match args[0].compare(&args[1]) {
+                    Ok(ord) => {
+                        match ord {
+                            Ordering::Greater => Ok(LResult::Value(LValue::BooleanValue(true))),
+                            _ => Ok(LResult::Value(LValue::BooleanValue(false))),
+                        }
+                    }
+                    Err(s) => Err(s),
+                }
             }
             Procedure::UserDefined { ref arguments, ref body } => {
                 // Make sure that the arguments provided are enough.
