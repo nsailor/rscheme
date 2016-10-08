@@ -30,6 +30,8 @@ pub enum LResult {
 #[derive(Debug,Clone)]
 pub enum Expression {
     Call { name:String, arguments:Vec<Expression> },
+    Definition { name:String, value:Box<Expression> },
+    Identifier(String),
     Value(LValue)
 }
 
@@ -44,7 +46,23 @@ impl Expression {
                 match v[0] {
                     ListNode::Identifier(ref s) => {
                         match s.as_str() {
-                            "define" => Err("Variable definitions not implemented yet.".to_string()),
+                            "define" => {
+                                if v.len() != 3 {
+                                    Err("A definition statement needs exactly 2 arguments.".to_string())
+                                } else {
+                                    if let ListNode::Identifier(ref s) = v[1] {
+                                        match Expression::from_list(&v[2]) {
+                                            Ok(e) => {
+                                                Ok(Expression::Definition { name:s.to_string(),
+                                                     value:Box::new(e) })
+                                            }
+                                            Err(s) => Err(s)
+                                        }
+                                    } else {
+                                        Err("First argument must be a valid identifier.".to_string())
+                                    }
+                                }
+                            },
                             "lambda" => Err("Lambda expressions not supported yet.".to_string()),
                             _ => {
                                 // Function call.
@@ -65,7 +83,9 @@ impl Expression {
                     _ => Err("Expected identifier or keyword.".to_string())
                 }
             },
-            ListNode::Identifier(_) => Err("Variables not supported yet.".to_string())
+            ListNode::Identifier(ref s) => {
+                Ok(Expression::Identifier(s.to_string()))
+            }
         }
     }
 }

@@ -20,7 +20,6 @@ impl Program {
         basic_map.insert("*".to_string(), LResult::Procedure(Procedure::Product));
         basic_map.insert("/".to_string(), LResult::Procedure(Procedure::Division));
         self.stack.push(basic_map);
-        println!("Running program: {:?}", root);
         match *root {
             ListNode::Node(ref v) => {
                 for e in v {
@@ -135,12 +134,38 @@ impl Program {
                 }
                 let procedure = self.find_identifier(name).cloned();
                 if procedure.is_none() {
-                    return Err("Failed to find the requested function.".to_string());
+                    return Err("Failed to find the requested procedure.".to_string());
                 }
                 let procedure = procedure.unwrap();
                 match procedure {
                     LResult::Procedure(ref p) => self.evaluate_call(p, &arg_values),
-                    _ => Err("Identifier not a function.".to_string())
+                    _ => Err("Identifier not a procedure name in call statement.".to_string())
+                }
+            },
+            Expression::Definition { ref name, ref value } => {
+                // Check if the value exists anywhere but the last stack.
+                if let Some((_, first)) = self.stack.split_last_mut() {
+                    for name_stack in first {
+                        if let Some(_) = name_stack.get(name) {
+                            return Err("Local variable definition would shadow a global name.".to_string());
+                        }
+                    }
+                } else {
+                    return Err("Unknown error occured - empty variable stack.".to_string());
+                }
+                let lres;
+                match self.evaluate_expression(value) {
+                    Ok(result) => lres = result.clone(),
+                    Err(s) => return Err(s)
+                }
+                *self.stack.last_mut().unwrap().entry(name.to_string()).or_insert(LResult::Undefined) = lres;
+                Ok(LResult::Undefined)
+            },
+            Expression::Identifier(ref s) => {
+                let result = self.find_identifier(s).cloned();
+                match result {
+                    Some(lres) => Ok(lres),
+                    None => Err("Undefined identifier '".to_string() + s + "'.")
                 }
             }
         }
