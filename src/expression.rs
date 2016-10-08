@@ -29,7 +29,7 @@ pub enum LResult {
 
 #[derive(Debug,Clone)]
 pub enum Expression {
-    Call { name:String, arguments:Vec<Expression> },
+    Call { fun:Box<Expression>, arguments:Vec<Expression> },
     Definition { name:String, value:Box<Expression> },
     Lambda(Procedure),
     Identifier(String),
@@ -43,7 +43,6 @@ impl Expression {
             ListNode::BooleanLiteral(b) => Ok(Expression::Value(LValue::BooleanValue(b))),
             ListNode::NumericLiteral(v) => Ok(Expression::Value(LValue::NumericalValue(v))),
             ListNode::Node(ref v) => {
-                // Check if this is a "define" or a lambda expression.
                 match v[0] {
                     ListNode::Identifier(ref s) => {
                         match s.as_str() {
@@ -52,7 +51,7 @@ impl Expression {
                             _ => Expression::process_call(&v)
                         }
                     },
-                    _ => Err("Expected identifier or keyword.".to_string())
+                    _ => Expression::process_call(&v)
                 }
             },
             ListNode::Identifier(ref s) => {
@@ -109,11 +108,9 @@ impl Expression {
                 Err(s) => return Err(s)
             }
         }
-        let name:String;
-        match params[0] {
-            ListNode::Identifier(ref s) => name = s.to_string(),
-            _ => return Err("Expected function name.".to_string())
+        match Expression::from_list(&params[0]) {
+            Ok(e) => Ok(Expression::Call { fun:Box::new(e), arguments:args }),
+            Err(s) => Err(s)
         }
-        Ok(Expression::Call { name:name, arguments:args })
     }
 }

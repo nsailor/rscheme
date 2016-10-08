@@ -141,7 +141,7 @@ impl Program {
     fn evaluate_expression(&mut self, e:&Expression) -> Result<LResult, String> {
         match *e {
             Expression::Value(ref v) => Ok(LResult::Value(v.clone())),
-            Expression::Call { ref name, arguments:ref args } => {
+            Expression::Call { ref fun, arguments:ref args } => {
                 let mut arg_values:Vec<LResult> = Vec::new();
                 for e in args {
                     match self.evaluate_expression(e) {
@@ -149,14 +149,15 @@ impl Program {
                         Err(s) => return Err(s)
                     }
                 }
-                let procedure = self.find_identifier(name).cloned();
-                if procedure.is_none() {
-                    return Err("Failed to find procedure '".to_string() + name + "'.");
-                }
-                let procedure = procedure.unwrap();
+                let procedure = self.evaluate_expression(fun).clone();
                 match procedure {
-                    LResult::Procedure(ref p) => self.evaluate_call(p, &arg_values),
-                    _ => Err("Identifier not a procedure name in call statement.".to_string())
+                    Ok(p) => {
+                        match p {
+                            LResult::Procedure(ref p) => self.evaluate_call(p, &arg_values),
+                            _ => Err("First expression not a procedure.".to_string())
+                        }
+                    },
+                    Err(s) => Err(s)
                 }
             },
             Expression::Definition { ref name, ref value } => {
