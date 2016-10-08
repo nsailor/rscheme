@@ -6,21 +6,21 @@ pub enum PrimitiveToken {
     RightParen,
     Word(String),
     StringLiteral(String),
-    NumericLiteral(f64)
+    NumericLiteral(f64),
 }
 
 fn split_word(accum: &mut String, tokens: &mut Vec<PrimitiveToken>) {
     if !accum.is_empty() {
         match accum.to_string().parse::<f64>() {
             Ok(v) => tokens.push(PrimitiveToken::NumericLiteral(v)),
-            Err(_) => tokens.push(PrimitiveToken::Word(accum.to_string()))
+            Err(_) => tokens.push(PrimitiveToken::Word(accum.to_string())),
         };
         *accum = String::new();
     }
 }
 
 pub fn parse_primitives(code: &String) -> Vec<PrimitiveToken> {
-    let mut tokens:Vec<PrimitiveToken> = Vec::new();
+    let mut tokens: Vec<PrimitiveToken> = Vec::new();
     // Parser state machine
     let mut word_accumulator: String = String::new();
     let mut in_comment = false;
@@ -43,24 +43,24 @@ pub fn parse_primitives(code: &String) -> Vec<PrimitiveToken> {
                 '(' => {
                     split_word(&mut word_accumulator, &mut tokens);
                     tokens.push(PrimitiveToken::LeftParen)
-                },
+                }
 
                 ')' => {
                     split_word(&mut word_accumulator, &mut tokens);
                     tokens.push(PrimitiveToken::RightParen)
-                },
+                }
 
                 ' ' | '\n' | '\t' | '\r' => split_word(&mut word_accumulator, &mut tokens),
                 ';' => {
                     split_word(&mut word_accumulator, &mut tokens);
                     in_comment = true
-                },
+                }
 
                 '\"' => {
                     split_word(&mut word_accumulator, &mut tokens);
                     in_string = true
-                },
-                _ => word_accumulator.push(c)
+                }
+                _ => word_accumulator.push(c),
             }
         }
     }
