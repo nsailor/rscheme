@@ -117,7 +117,24 @@ impl Program {
                 }
                 Ok(LResult::Value(LValue::NumericalValue(ratio)))
             },
-            _ => Err("Can't evaluate user-defined functions yet.".to_string())
+            Procedure::UserDefined { ref arguments, ref body } => {
+                // Make sure that the arguments provided are enough.
+                if arguments.len() != args.len() {
+                    return Err("Invalid number of arguments provided.".to_string());
+                }
+                // Create an argument map.
+                let mut arg_stack:HashMap<String,LResult> = HashMap::new();
+                for i in 0..args.len() {
+                    arg_stack.insert(arguments[i].clone(), args[i].clone());
+                }
+                self.stack.push(arg_stack);
+                let mut lres:Result<LResult,String> = Err("Empty function body.".to_string());
+                for e in body {
+                    lres = self.evaluate_expression(e);
+                }
+                self.stack.pop();
+                lres
+            }
         }
     }
 
@@ -134,7 +151,7 @@ impl Program {
                 }
                 let procedure = self.find_identifier(name).cloned();
                 if procedure.is_none() {
-                    return Err("Failed to find the requested procedure.".to_string());
+                    return Err("Failed to find procedure '".to_string() + name + "'.");
                 }
                 let procedure = procedure.unwrap();
                 match procedure {
@@ -167,6 +184,9 @@ impl Program {
                     Some(lres) => Ok(lres),
                     None => Err("Undefined identifier '".to_string() + s + "'.")
                 }
+            },
+            Expression::Lambda(ref p) => {
+                Ok(LResult::Procedure(p.clone()))
             }
         }
     }
