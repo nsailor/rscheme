@@ -276,6 +276,28 @@ impl Program {
                 }
             }
             Expression::Lambda(ref p) => Ok(LResult::Procedure(p.clone())),
+            Expression::IfCondition { ref cond, ref yes_expr, ref no_expr } => {
+                let result: bool;
+                match self.evaluate_expression(cond) {
+                    Ok(lres) => {
+                        match lres.to_boolean() {
+                            Ok(b) => {
+                                result = b;
+                            }
+                            Err(s) => return Err(s),
+                        }
+                    }
+                    Err(s) => return Err(s),
+                }
+                if result == true {
+                    self.evaluate_expression(yes_expr)
+                } else {
+                    match *no_expr {
+                        Some(ref no_e) => self.evaluate_expression(no_e),
+                        None => Ok(LResult::Undefined),
+                    }
+                }
+            }
         }
     }
 }

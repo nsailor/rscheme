@@ -145,6 +145,11 @@ pub enum Expression {
     Lambda(Procedure),
     Identifier(String),
     Value(LValue),
+    IfCondition {
+        cond: Box<Expression>,
+        yes_expr: Box<Expression>,
+        no_expr: Option<Box<Expression>>,
+    },
 }
 
 impl Expression {
@@ -159,6 +164,7 @@ impl Expression {
                         match s.as_str() {
                             "lambda" => Expression::process_lambda(&v[1..]),
                             "define" => Expression::process_define(&v[1..]),
+                            "if" => Expression::process_if(&v[1..]),
                             _ => Expression::process_call(&v),
                         }
                     }
@@ -212,6 +218,36 @@ impl Expression {
             arguments: args,
             body: body,
         }))
+    }
+
+    fn process_if(params: &[ListNode]) -> Result<Expression, String> {
+        if params.len() < 2 || params.len() > 3 {
+            return Err("'if' statement requires two or three expressions.".to_string());
+        }
+        let condition: Box<Expression>;
+        let yes_expr: Box<Expression>;
+        let no_expr: Option<Box<Expression>>;
+        match Expression::from_list(&params[0]) {
+            Ok(ref e) => condition = Box::new(e.clone()),
+            Err(s) => return Err(s),
+        }
+        match Expression::from_list(&params[1]) {
+            Ok(ref e) => yes_expr = Box::new(e.clone()),
+            Err(s) => return Err(s),
+        }
+        if params.len() < 3 {
+            no_expr = Option::None;
+        } else {
+            match Expression::from_list(&params[2]) {
+                Ok(ref e) => no_expr = Some(Box::new(e.clone())),
+                Err(s) => return Err(s),
+            }
+        }
+        Ok(Expression::IfCondition {
+            cond: condition,
+            yes_expr: yes_expr,
+            no_expr: no_expr,
+        })
     }
 
     fn process_call(params: &[ListNode]) -> Result<Expression, String> {
