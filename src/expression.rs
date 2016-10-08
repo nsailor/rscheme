@@ -34,6 +34,9 @@ pub enum Procedure {
     Equal,
     Less,
     Greater,
+    And,
+    Or,
+    Not,
 }
 
 impl fmt::Display for Procedure {
@@ -49,6 +52,9 @@ impl fmt::Display for Procedure {
             Procedure::Equal => write!(f, "#procedure:="),
             Procedure::Less => write!(f, "#procedure:<"),
             Procedure::Greater => write!(f, "#procedure:>"),
+            Procedure::And => write!(f, "#procedure:and"),
+            Procedure::Or => write!(f, "#procedure:or"),
+            Procedure::Not => write!(f, "#procedure:not"),
         }
     }
 }
@@ -109,6 +115,19 @@ impl LResult {
                     _ => Err("Expected numerical expression as the second argument.".to_string()),
                 }
             }
+        }
+    }
+
+    pub fn to_boolean(&self) -> Result<bool, String> {
+        match *self {
+            LResult::Value(ref lv) => {
+                match *lv {
+                    LValue::NumericalValue(x) => Ok(x >= 0.0),
+                    LValue::BooleanValue(b) => Ok(b),
+                    LValue::StringValue(_) => Err("Can't convert string to boolean.".to_string()),
+                }
+            }
+            _ => Err("Can't convert procedures and #undefined's to booleans.".to_string()),
         }
     }
 }

@@ -23,6 +23,9 @@ impl Program {
         basic_map.insert("=".to_string(), LResult::Procedure(Procedure::Equal));
         basic_map.insert("<".to_string(), LResult::Procedure(Procedure::Less));
         basic_map.insert(">".to_string(), LResult::Procedure(Procedure::Greater));
+        basic_map.insert("and".to_string(), LResult::Procedure(Procedure::And));
+        basic_map.insert("or".to_string(), LResult::Procedure(Procedure::Or));
+        basic_map.insert("not".to_string(), LResult::Procedure(Procedure::Not));
         self.stack.push(basic_map);
         match *root {
             ListNode::Node(ref v) => {
@@ -161,6 +164,41 @@ impl Program {
                         }
                     }
                     Err(s) => Err(s),
+                }
+            }
+            Procedure::And => {
+                if args.len() < 2 {
+                    return Err("'And' requires at least two operands.".to_string());
+                }
+                let mut value = true;
+                for v in args {
+                    match v.to_boolean() {
+                        Ok(b) => value = value && b,
+                        Err(s) => return Err(s),
+                    }
+                }
+                Ok(LResult::Value(LValue::BooleanValue(value)))
+            }
+            Procedure::Or => {
+                if args.len() < 2 {
+                    return Err("'Or' requires at least two operands.".to_string());
+                }
+                let mut value = false;
+                for v in args {
+                    match v.to_boolean() {
+                        Ok(b) => value = value || b,
+                        Err(s) => return Err(s),
+                    }
+                }
+                Ok(LResult::Value(LValue::BooleanValue(value)))
+            }
+            Procedure::Not => {
+                if args.len() != 1 {
+                    return Err("'Not' requires a single argument.".to_string());
+                }
+                match args[0].to_boolean() {
+                    Ok(b) => Ok(LResult::Value(LValue::BooleanValue(!b))),
+                    Err(s) => return Err(s),
                 }
             }
             Procedure::UserDefined { ref arguments, ref body } => {
