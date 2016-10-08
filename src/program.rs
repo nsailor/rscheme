@@ -26,7 +26,7 @@ impl Program {
                     match Expression::from_list(e) {
                         Ok(res) => {
                             match self.evaluate_expression(&res) {
-                                Ok(result) => println!("Result: {:?}", result),
+                                Ok(result) => println!("{}", result),
                                 Err(s) => println!("Runtime error: {}", s)
                             }
                         }

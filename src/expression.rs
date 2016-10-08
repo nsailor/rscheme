@@ -1,11 +1,23 @@
 
 use list::*;
+use std::fmt;
+use std::fmt::Formatter;
 
 #[derive(Debug,Clone)]
 pub enum LValue {
     StringValue(String),
     NumericalValue(f64),
     BooleanValue(bool),
+}
+
+impl fmt::Display for LValue {
+    fn fmt(&self, f:&mut Formatter) -> fmt::Result {
+        match *self {
+            LValue::StringValue(ref s) => write!(f, "\"{}\"", s),
+            LValue::NumericalValue(v) => write!(f, "{}", v),
+            LValue::BooleanValue(v) => if v { write!(f, "#t") } else { write!(f, "#f") }
+        }
+    }
 }
 
 #[derive(Debug,Clone)]
@@ -20,11 +32,35 @@ pub enum Procedure {
     Division
 }
 
+impl fmt::Display for Procedure {
+    fn fmt(&self, f:&mut Formatter) -> fmt::Result {
+        match *self {
+            Procedure::UserDefined { arguments:_, body:_ } => {
+                 write!(f, "#procedure:user-defined")
+            }
+            Procedure::Sum => write!(f, "#procedure:+"),
+            Procedure::Difference => write!(f, "#procedure:-"),
+            Procedure::Product => write!(f, "#procedure:*"),
+            Procedure::Division => write!(f, "#procedure:/")
+        }
+    }
+}
+
 #[derive(Debug,Clone)]
 pub enum LResult {
     Value(LValue),
     Procedure(Procedure),
     Undefined
+}
+
+impl fmt::Display for LResult {
+    fn fmt(&self, f:&mut Formatter) -> fmt::Result {
+        match *self {
+            LResult::Value(ref v) => write!(f, "{}", v),
+            LResult::Procedure(ref p) => write!(f, "{}", p),
+            LResult::Undefined => write!(f, "#undefined")
+        }
+    }
 }
 
 #[derive(Debug,Clone)]
