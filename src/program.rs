@@ -49,13 +49,14 @@ impl Program {
     }
 
     fn find_identifier(&self, name: &str) -> Option<&LResult> {
-        for name_stack in &self.stack {
+        let stack_ref = &self.stack;
+        for name_stack in stack_ref.into_iter().rev() {
             match name_stack.get(name) {
-                Some(lres) => return Option::Some(lres),
+                Some(lres) => return Some(lres),
                 None => continue,
             }
         }
-        Option::None
+        None
     }
 
     fn evaluate_call(&mut self, p: &Procedure, args: &Vec<LResult>) -> Result<LResult, String> {
@@ -245,27 +246,15 @@ impl Program {
                 }
             }
             Expression::Definition { ref name, ref value } => {
-                // Check if the value exists anywhere but the last stack.
-                if let Some((_, first)) = self.stack.split_last_mut() {
-                    for name_stack in first {
-                        if let Some(_) = name_stack.get(name) {
-                            return Err("Local variable definition would shadow a global name."
-                                .to_string());
-                        }
-                    }
-                } else {
-                    return Err("Unknown error occured - empty variable stack.".to_string());
-                }
                 let lres;
                 match self.evaluate_expression(value) {
                     Ok(result) => lres = result.clone(),
                     Err(s) => return Err(s),
                 }
-                *self.stack
+                let ref mut active_stack = *self.stack
                     .last_mut()
-                    .unwrap()
-                    .entry(name.to_string())
-                    .or_insert(LResult::Undefined) = lres;
+                    .unwrap();
+                active_stack.insert(name.to_string(), lres.clone());
                 Ok(LResult::Undefined)
             }
             Expression::Identifier(ref s) => {
