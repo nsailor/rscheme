@@ -5,25 +5,6 @@ use std::fmt::Formatter;
 use std::cmp::Ordering;
 
 #[derive(Debug,Clone)]
-pub enum LValue {
-    StringValue(String),
-    NumericalValue(f64),
-    BooleanValue(bool),
-    Quoted(Box<Expression>),
-}
-
-impl fmt::Display for LValue {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match *self {
-            LValue::StringValue(ref s) => write!(f, "\"{}\"", s),
-            LValue::NumericalValue(v) => write!(f, "{}", v),
-            LValue::BooleanValue(v) => if v { write!(f, "#t") } else { write!(f, "#f") },
-            LValue::Quoted(ref e) => write!(f, "#<expression>:{:?}", e),
-        }
-    }
-}
-
-#[derive(Debug,Clone)]
 pub enum Procedure {
     UserDefined {
         arguments: Vec<String>,
@@ -62,49 +43,45 @@ impl fmt::Display for Procedure {
 }
 
 #[derive(Debug,Clone)]
-pub enum LResult {
-    Value(LValue),
+pub enum LValue {
+    StringValue(String),
+    NumericalValue(f64),
+    BooleanValue(bool),
+    Quoted(Box<Expression>),
     Procedure(Procedure),
     Undefined,
 }
 
-impl fmt::Display for LResult {
+impl fmt::Display for LValue {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match *self {
-            LResult::Value(ref v) => write!(f, "{}", v),
-            LResult::Procedure(ref p) => write!(f, "{}", p),
-            LResult::Undefined => write!(f, "#<undefined>"),
+            LValue::StringValue(ref s) => write!(f, "\"{}\"", s),
+            LValue::NumericalValue(v) => write!(f, "{}", v),
+            LValue::BooleanValue(v) => if v { write!(f, "#t") } else { write!(f, "#f") },
+            LValue::Quoted(ref e) => write!(f, "#<expression>:{:?}", e),
+            LValue::Procedure(ref p) => write!(f, "{}", p),
+            LValue::Undefined => write!(f, "#<undefined>"),
         }
     }
 }
 
-impl LResult {
-    pub fn compare(&self, v: &LResult) -> Result<Ordering, String> {
-        let lhs: LValue;
-        let rhs: LValue;
+impl LValue {
+    pub fn compare(&self, rhs: &LValue) -> Result<Ordering, String> {
         match *self {
-            LResult::Value(ref lv) => lhs = lv.clone(),
-            _ => return Err("Can't compare procedures or undefined results.".to_string()),
-        }
-        match *v {
-            LResult::Value(ref lv) => rhs = lv.clone(),
-            _ => return Err("Can't compare procedures or undefined results.".to_string()),
-        }
-        match lhs {
             LValue::StringValue(ref s1) => {
-                match rhs {
+                match *rhs {
                     LValue::StringValue(ref s2) => Ok(s1.cmp(s2)),
                     _ => Err("Expected string expression as the second argument.".to_string()),
                 }
             }
             LValue::BooleanValue(b1) => {
-                match rhs {
+                match *rhs {
                     LValue::BooleanValue(b2) => Ok(b1.cmp(&b2)),
                     _ => Err("Expected boolean expression as the second argument.".to_string()),
                 }
             }
             LValue::NumericalValue(x1) => {
-                match rhs {
+                match *rhs {
                     LValue::NumericalValue(x2) => {
                         Ok(if x1 > x2 {
                             Ordering::Greater
@@ -118,19 +95,17 @@ impl LResult {
                 }
             }
             LValue::Quoted(_) => Err("Can't compare quoted expressions.".to_string()),
+            LValue::Procedure(_) => Err("Can't compare procedures.".to_string()),
+            LValue::Undefined => Err("Can't compare #<undefined>'s.".to_string()),
         }
     }
 
     pub fn to_boolean(&self) -> Result<bool, String> {
         match *self {
-            LResult::Value(ref lv) => {
-                match *lv {
-                    LValue::NumericalValue(x) => Ok(x >= 0.0),
-                    LValue::BooleanValue(b) => Ok(b),
-                    LValue::StringValue(_) => Ok(true),
-                    LValue::Quoted(_) => Ok(true),
-                }
-            }
+            LValue::NumericalValue(x) => Ok(x >= 0.0),
+            LValue::BooleanValue(b) => Ok(b),
+            LValue::StringValue(_) => Ok(true),
+            LValue::Quoted(_) => Ok(true),
             _ => Err("Can't convert procedures and #undefined's to booleans.".to_string()),
         }
     }
@@ -138,10 +113,8 @@ impl LResult {
 
 #[derive(Debug,Clone)]
 pub enum Expression {
-    Call {
-        fun: Box<Expression>,
-        arguments: Vec<Expression>,
-    },
+    List(Vec<Expression>),
+    Eval(Box<Expression>),
     Definition {
         name: String,
         value: Box<Expression>,
@@ -167,6 +140,9 @@ impl Expression {
                     let newv = (*v).clone();
                     return Expression::process_quote(&ListNode::Node(false, newv));
                 }
+                if v.len() == 0 {
+                    return Ok(Expression::List(Vec::new()));
+                }
                 match v[0] {
                     ListNode::Identifier(_, ref s) => {
                         match s.as_str() {
@@ -181,10 +157,18 @@ impl Expression {
                                     Expression::process_quote(&v[1])
                                 }
                             }
-                            _ => Expression::process_call(&v),
+                            "eval" => {
+                                if v.len() != 2 {
+                                    Err("Eval expression must contain exactly one expression."
+                                        .to_string())
+                                } else {
+                                    Expression::process_eval(&v[1])
+                                }
+                            }
+                            _ => Expression::process_list(&v),
                         }
                     }
-                    _ => Expression::process_call(&v),
+                    _ => Expression::process_list(&v),
                 }
             }
             ListNode::Identifier(quoted, ref s) => {
@@ -292,22 +276,21 @@ impl Expression {
         }
     }
 
-    fn process_call(params: &[ListNode]) -> Result<Expression, String> {
-        let mut args: Vec<Expression> = Vec::new();
-        for node in &params[1..] {
-            match Expression::from_list(node) {
-                Ok(e) => args.push(e),
+    fn process_eval(n: &ListNode) -> Result<Expression, String> {
+        match Expression::from_list(n) {
+            Ok(e) => Ok(Expression::Eval(Box::new(e))),
+            Err(s) => Err(s),
+        }
+    }
+
+    fn process_list(elements: &[ListNode]) -> Result<Expression, String> {
+        let mut children: Vec<Expression> = Vec::new();
+        for e in elements {
+            match Expression::from_list(e) {
+                Ok(expr) => children.push(expr),
                 Err(s) => return Err(s),
             }
         }
-        match Expression::from_list(&params[0]) {
-            Ok(e) => {
-                Ok(Expression::Call {
-                    fun: Box::new(e),
-                    arguments: args,
-                })
-            }
-            Err(s) => Err(s),
-        }
+        Ok(Expression::List(children))
     }
 }
