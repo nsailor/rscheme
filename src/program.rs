@@ -19,9 +19,9 @@ impl Program {
     pub fn run_code(&mut self, code: String, silent: bool) {
         let tokens = parser::parse_primitives(&code);
         let mut token_iter = tokens.into_iter();
-        let list_tree = ListNode::from_primitive_tokens(&mut token_iter);
+        let list_tree = ListNode::from_primitive_tokens(&mut token_iter, false);
         match list_tree {
-            ListNode::Node(ref v) => {
+            ListNode::Node(_, ref v) => {
                 for e in v {
                     match Expression::from_list(e) {
                         Ok(res) => {

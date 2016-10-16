@@ -9,6 +9,7 @@ pub enum LValue {
     StringValue(String),
     NumericalValue(f64),
     BooleanValue(bool),
+    Quoted(Box<Expression>),
 }
 
 impl fmt::Display for LValue {
@@ -17,6 +18,7 @@ impl fmt::Display for LValue {
             LValue::StringValue(ref s) => write!(f, "\"{}\"", s),
             LValue::NumericalValue(v) => write!(f, "{}", v),
             LValue::BooleanValue(v) => if v { write!(f, "#t") } else { write!(f, "#f") },
+            LValue::Quoted(ref e) => write!(f, "#<expression>:{:?}", e),
         }
     }
 }
@@ -115,6 +117,7 @@ impl LResult {
                     _ => Err("Expected numerical expression as the second argument.".to_string()),
                 }
             }
+            LValue::Quoted(_) => Err("Can't compare quoted expressions.".to_string()),
         }
     }
 
@@ -124,7 +127,8 @@ impl LResult {
                 match *lv {
                     LValue::NumericalValue(x) => Ok(x >= 0.0),
                     LValue::BooleanValue(b) => Ok(b),
-                    LValue::StringValue(_) => Err("Can't convert string to boolean.".to_string()),
+                    LValue::StringValue(_) => Ok(true),
+                    LValue::Quoted(_) => Ok(true),
                 }
             }
             _ => Err("Can't convert procedures and #undefined's to booleans.".to_string()),
@@ -158,20 +162,38 @@ impl Expression {
             ListNode::StringLiteral(ref s) => Ok(Expression::Value(LValue::StringValue(s.clone()))),
             ListNode::BooleanLiteral(b) => Ok(Expression::Value(LValue::BooleanValue(b))),
             ListNode::NumericLiteral(v) => Ok(Expression::Value(LValue::NumericalValue(v))),
-            ListNode::Node(ref v) => {
+            ListNode::Node(quoted, ref v) => {
+                if quoted {
+                    let newv = (*v).clone();
+                    return Expression::process_quote(&ListNode::Node(false, newv));
+                }
                 match v[0] {
-                    ListNode::Identifier(ref s) => {
+                    ListNode::Identifier(_, ref s) => {
                         match s.as_str() {
                             "lambda" => Expression::process_lambda(&v[1..]),
                             "define" => Expression::process_define(&v[1..]),
                             "if" => Expression::process_if(&v[1..]),
+                            "quote" => {
+                                if v.len() != 2 {
+                                    Err("Quote expression must contain exactly one expression."
+                                        .to_string())
+                                } else {
+                                    Expression::process_quote(&v[1])
+                                }
+                            }
                             _ => Expression::process_call(&v),
                         }
                     }
                     _ => Expression::process_call(&v),
                 }
             }
-            ListNode::Identifier(ref s) => Ok(Expression::Identifier(s.to_string())),
+            ListNode::Identifier(quoted, ref s) => {
+                if !quoted {
+                    Ok(Expression::Identifier(s.to_string()))
+                } else {
+                    Expression::process_quote(&ListNode::Identifier(false, s.to_string()))
+                }
+            }
         }
     }
 
@@ -179,15 +201,19 @@ impl Expression {
         if params.len() != 2 {
             Err("A definition statement needs exactly 2 arguments.".to_string())
         } else {
-            if let ListNode::Identifier(ref s) = params[0] {
-                match Expression::from_list(&params[1]) {
-                    Ok(e) => {
-                        Ok(Expression::Definition {
-                            name: s.to_string(),
-                            value: Box::new(e),
-                        })
+            if let ListNode::Identifier(quoted, ref s) = params[0] {
+                if quoted {
+                    Err("Identifier name in define statement must not be quoted.".to_string())
+                } else {
+                    match Expression::from_list(&params[1]) {
+                        Ok(e) => {
+                            Ok(Expression::Definition {
+                                name: s.to_string(),
+                                value: Box::new(e),
+                            })
+                        }
+                        Err(s) => Err(s),
                     }
-                    Err(s) => Err(s),
                 }
             } else {
                 Err("First argument must be a valid identifier.".to_string())
@@ -198,12 +224,21 @@ impl Expression {
     fn process_lambda(params: &[ListNode]) -> Result<Expression, String> {
         let mut args: Vec<String> = Vec::new();
         let arg_list = &params[0];
-        if let ListNode::Node(ref v) = *arg_list {
+        if let ListNode::Node(quoted, ref v) = *arg_list {
+            if quoted {
+                return Err("The argument list in a lambda expression must not be quoted."
+                    .to_string());
+            }
             for a in v {
-                if let ListNode::Identifier(ref s) = *a {
+                if let ListNode::Identifier(quoted, ref s) = *a {
+                    if quoted {
+                        return Err("Argument name must not be quoted in a lambda expression"
+                            .to_string());
+                    }
                     args.push(s.to_string());
                 } else {
-                    return Err("The argument list must only contain identifiers.".to_string());
+                    return Err("The argument list must only contain non-quoted identifiers."
+                        .to_string());
                 }
             }
         }
@@ -248,6 +283,13 @@ impl Expression {
             yes_expr: yes_expr,
             no_expr: no_expr,
         })
+    }
+
+    fn process_quote(n: &ListNode) -> Result<Expression, String> {
+        match Expression::from_list(n) {
+            Ok(e) => Ok(Expression::Value(LValue::Quoted(Box::new(e)))),
+            Err(s) => Err(s),
+        }
     }
 
     fn process_call(params: &[ListNode]) -> Result<Expression, String> {

@@ -7,6 +7,7 @@ pub enum PrimitiveToken {
     Word(String),
     StringLiteral(String),
     NumericLiteral(f64),
+    Quote,
 }
 
 fn split_word(accum: &mut String, tokens: &mut Vec<PrimitiveToken>) {
@@ -59,6 +60,11 @@ pub fn parse_primitives(code: &String) -> Vec<PrimitiveToken> {
                 '\"' => {
                     split_word(&mut word_accumulator, &mut tokens);
                     in_string = true
+                }
+
+                '\'' => {
+                    split_word(&mut word_accumulator, &mut tokens);
+                    tokens.push(PrimitiveToken::Quote)
                 }
                 _ => word_accumulator.push(c),
             }
