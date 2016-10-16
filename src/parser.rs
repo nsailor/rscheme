@@ -40,12 +40,12 @@ pub fn parse_primitives(code: &String) -> Vec<PrimitiveToken> {
             }
         } else {
             match c {
-                '(' => {
+                '(' | '[' => {
                     split_word(&mut word_accumulator, &mut tokens);
                     tokens.push(PrimitiveToken::LeftParen)
                 }
 
-                ')' => {
+                ')' | ']' => {
                     split_word(&mut word_accumulator, &mut tokens);
                     tokens.push(PrimitiveToken::RightParen)
                 }

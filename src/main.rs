@@ -13,7 +13,7 @@ use program::Program;
 fn get_file_list() -> Vec<String> {
     let mut args = env::args();
     args.next(); // Skip the program name.
-    let mut files:Vec<String> = Vec::new();
+    let mut files: Vec<String> = Vec::new();
     for arg in args {
         files.push(arg.clone());
     }
@@ -37,7 +37,7 @@ fn main() {
                 file.read_to_string(&mut code).unwrap();
                 program.run_code(code, true);
             }
-            Err(_) => println!("Failed to open file {}.", path)
+            Err(_) => println!("Failed to open file {}.", path),
         }
     }
 

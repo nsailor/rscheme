@@ -16,7 +16,7 @@ impl Program {
         p
     }
 
-    pub fn run_code(&mut self, code: String, silent:bool) {
+    pub fn run_code(&mut self, code: String, silent: bool) {
         let tokens = parser::parse_primitives(&code);
         let mut token_iter = tokens.into_iter();
         let list_tree = ListNode::from_primitive_tokens(&mut token_iter);
@@ -26,7 +26,11 @@ impl Program {
                     match Expression::from_list(e) {
                         Ok(res) => {
                             match self.evaluate_expression(&res) {
-                                Ok(result) => if !silent { println!("{}", result) },
+                                Ok(result) => {
+                                    if !silent {
+                                        println!("{}", result)
+                                    }
+                                }
                                 Err(s) => println!("Runtime error: {}", s),
                             }
                         }
