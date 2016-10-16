@@ -1,5 +1,6 @@
 
 use std::collections::HashMap;
+use parser;
 use list::ListNode;
 use expression::*;
 use std::cmp::Ordering;
@@ -10,10 +11,37 @@ pub struct Program {
 
 impl Program {
     pub fn new() -> Program {
-        Program { stack: Vec::new() }
+        let mut p = Program { stack: Vec::new() };
+        p.initialize();
+        p
     }
 
-    pub fn run(&mut self, root: &ListNode) {
+    pub fn run_code(&mut self, code: String, silent:bool) {
+        let tokens = parser::parse_primitives(&code);
+        let mut token_iter = tokens.into_iter();
+        let list_tree = ListNode::from_primitive_tokens(&mut token_iter);
+        match list_tree {
+            ListNode::Node(ref v) => {
+                for e in v {
+                    match Expression::from_list(e) {
+                        Ok(res) => {
+                            match self.evaluate_expression(&res) {
+                                Ok(result) => if !silent { println!("{}", result) },
+                                Err(s) => println!("Runtime error: {}", s),
+                            }
+                        }
+                        Err(s) => {
+                            println!("Syntax error: {}", s);
+                            break;
+                        }
+                    }
+                }
+            }
+            _ => println!("Fatal error."),
+        }
+    }
+
+    pub fn initialize(&mut self) {
         // Add the basic functions.
         let mut basic_map: HashMap<String, LResult> = HashMap::new();
         basic_map.insert("+".to_string(), LResult::Procedure(Procedure::Sum));
@@ -27,25 +55,6 @@ impl Program {
         basic_map.insert("or".to_string(), LResult::Procedure(Procedure::Or));
         basic_map.insert("not".to_string(), LResult::Procedure(Procedure::Not));
         self.stack.push(basic_map);
-        match *root {
-            ListNode::Node(ref v) => {
-                for e in v {
-                    match Expression::from_list(e) {
-                        Ok(res) => {
-                            match self.evaluate_expression(&res) {
-                                Ok(result) => println!("{}", result),
-                                Err(s) => println!("Runtime error: {}", s),
-                            }
-                        }
-                        Err(s) => {
-                            println!("Syntax error: {}", s);
-                            break;
-                        }
-                    }
-                }
-            }
-            _ => println!("Fatal error."),
-        }
     }
 
     fn find_identifier(&self, name: &str) -> Option<&LResult> {

@@ -1,6 +1,6 @@
 [package]
-name = "rlisp"
-version = "0.1.0"
+name = "rscheme"
+version = "0.0.1"
 authors = ["Jason P. Barmparesos <jason.barmparesos@gmail.com>"]
 
 [dependencies]

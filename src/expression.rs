@@ -43,18 +43,18 @@ impl fmt::Display for Procedure {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match *self {
             Procedure::UserDefined { arguments: _, body: _ } => {
-                write!(f, "#procedure:user-defined")
+                write!(f, "#<procedure>:user-defined")
             }
-            Procedure::Sum => write!(f, "#procedure:+"),
-            Procedure::Difference => write!(f, "#procedure:-"),
-            Procedure::Product => write!(f, "#procedure:*"),
-            Procedure::Division => write!(f, "#procedure:/"),
-            Procedure::Equal => write!(f, "#procedure:="),
-            Procedure::Less => write!(f, "#procedure:<"),
-            Procedure::Greater => write!(f, "#procedure:>"),
-            Procedure::And => write!(f, "#procedure:and"),
-            Procedure::Or => write!(f, "#procedure:or"),
-            Procedure::Not => write!(f, "#procedure:not"),
+            Procedure::Sum => write!(f, "#<procedure>:+"),
+            Procedure::Difference => write!(f, "#<procedure>:-"),
+            Procedure::Product => write!(f, "#<procedure>:*"),
+            Procedure::Division => write!(f, "#<procedure>:/"),
+            Procedure::Equal => write!(f, "#<procedure>:="),
+            Procedure::Less => write!(f, "#<procedure>:<"),
+            Procedure::Greater => write!(f, "#<procedure>:>"),
+            Procedure::And => write!(f, "#<procedure>:and"),
+            Procedure::Or => write!(f, "#<procedure>:or"),
+            Procedure::Not => write!(f, "#<procedure>:not"),
         }
     }
 }
@@ -71,7 +71,7 @@ impl fmt::Display for LResult {
         match *self {
             LResult::Value(ref v) => write!(f, "{}", v),
             LResult::Procedure(ref p) => write!(f, "{}", p),
-            LResult::Undefined => write!(f, "#undefined"),
+            LResult::Undefined => write!(f, "#<undefined>"),
         }
     }
 }
